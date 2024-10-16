@@ -17,18 +17,23 @@ class Query(BaseModel):
 async def process_query(query: Query):
     try:
         # Convert query to embedding
-        embedding = groq_api.get_embedding(query.text)
+        embedding = openai_api.get_embedding(query.text)
         
         # Perform semantic search
-        relevant_docs = chroma_db.search(embedding)
+        search_results = chroma_db.search(embedding)
+        
+        # Extract the actual content from the search results
+        relevant_docs = [result['document'] for result in search_results['documents'][0]]
         
         # Generate AI response
-        context = "\n".join(doc.page_content for doc in relevant_docs)
-        response = groq_api.generate_response(query.text, context)
+        context = "\n".join(relevant_docs)
+        response = openai_api.generate_response(query.text, context)
         
         return {"response": response}
     except Exception as e:
+        print(f"Error processing query: {str(e)}")  # Log the error
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/update_confluence_data")
 async def update_confluence_data():
